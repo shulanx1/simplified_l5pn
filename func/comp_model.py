@@ -255,8 +255,8 @@ class CModel:
          """
         P = self.P
         E_r, E_e, E_i, E_na, E_k, E_ca, tauA, tauN, tauG,\
-        active_n, r_na, gamma, decay,tau_m, dist = (P['E_l'], P['E_e'], P['E_i'], P['E_na'], P['E_k'], P['E_ca'], \
-                    P['tauA'], P['tauN'], P['tauG'],  P['active_n'], P['r_na'], P['gamma'], P['decay'], P['tau_m'], P['dist'])
+        active_n, r_na, gamma, decay,tau_m, dist, N = (P['E_l'], P['E_e'], P['E_i'], P['E_na'], P['E_k'], P['E_ca'], \
+                    P['tauA'], P['tauN'], P['tauG'],  P['active_n'], P['r_na'], P['gamma'], P['decay'], P['tau_m'], P['dist'], P['N'])
 
         g_ion = np.asarray([[self.P['g_na'], self.P['g_k'], self.P['g_m'] ,self.P['g_ca'], self.P['g_kca'],self.P['g_nad']],
                             [self.P['g_na_b'],self.P['g_k_b'], self.P['g_m_b'] ,self.P['g_ca_b'], self.P['g_kca_b'],self.P['g_nad_b']],
@@ -299,7 +299,14 @@ class CModel:
         A_r, A_d, N_r, N_d, G_r, G_d = build_stim2(t, dt, syn_0[0][:, ind_e],
                                     syn_0[1][:, ind_e], syn_0[2][:, ind_i],
                                     S_e[ind_e], S_i[ind_i], tauA, tauN, tauG)
-        I_inj *= 1/(self.area[inj_site])*1e-3  # uA/cm^2
+
+        if len(np.asarray(I_inj).shape)>1:
+            I_inj = np.asarray(I_inj)
+            for i in range(I_inj.shape[0]):
+                I_inj[i,:] *= 1/(self.area[inj_site[i]])*1e-3
+        else:
+            I_inj *= 1/(self.area[inj_site])*1e-3  # uA/cm^2
+
 
 
         a_inds = np.arange(M)
@@ -311,7 +318,7 @@ class CModel:
         n_dend = np.asarray([i for i in a_inds if i not in dend])
         v[:, 0] = v_0
         gates = np.zeros((12, M, len(t)))
-        channels = [na(v_0[0]), kv(v_0[0]), im(v_0[0]) ,ca(v_0[0]), kca(v_0[0]), nad(v_0[0], dist = 30),CaDynamics_E2()]
+        channels = [na(v_0[0]), kv(v_0[0]), im(v_0[0]) ,ca(v_0[0]), kca(v_0[0]), nad(v_0, dist = dist, N = N),CaDynamics_E2()]
         gates[0] = np.zeros((M, len(t)))  # na_m
         gates[1] = np.zeros((M, len(t)))  # na_h
         gates[0, :, 0] = channels[0].m
@@ -360,16 +367,12 @@ class CModel:
             gates[4, :, k] = gates[4, :, k-1] + (1 - np.exp(-dt/channels[3].mtau(v[:, k - 1])))*(channels[3].minf(v[:, k - 1]) - gates[4, :, k-1])
             gates[5, :, k] = gates[5, :, k-1] + (1 - np.exp(-dt/channels[3].htau(v[:, k - 1])))*(channels[3].hinf(v[:, k - 1]) - gates[5, :, k-1])
             gates[6, :, k] = gates[6, :, k-1] + (1 - np.exp(-dt/channels[4].mtau(gates[11, :, k - 1])))*(channels[4].minf(gates[11, :, k - 1]) - gates[6, :, k-1])
-            # gates[7, :, k] = gates[7, :, k-1] + (1 - np.exp(-dt/channels[5].mtau(v[:, k - 1])))*(channels[5].minf(v[:, k - 1]) - gates[7, :, k-1])
-            # gates[8, :, k] = gates[8, :, k-1] + (1 - np.exp(-dt/channels[5].htau(v[:, k - 1])))*(channels[5].hinf(v[:, k - 1]) - gates[8, :, k-1])
-            # gates[9, :, k] = gates[9, :, k-1] + (1 - np.exp(-dt/channels[5].ztau(v[:, k - 1])))*(channels[5].zinf(v[:, k - 1]) - gates[9, :, k-1])
-            gates[7, :, k] = gates[7, :, k-1] + dt*(channels[5].C1O1_a(v[:, k - 1])*gates[8, :, k-1] - channels[5].O1C1_a(v[:,k-1])*gates[7, :, k-1] + channels[5].I1O1_a(v[:, k - 1])*gates[9, :, k-1] - channels[5].O1I1_a(v[:, k - 1])*gates[7,:,k-1])
-            gates[8, :, k] = gates[8, :, k-1] + dt*(channels[5].O1C1_a(v[:, k - 1])*gates[7, :, k-1]  - channels[5].C1O1_a(v[:,k-1])*gates[8, :, k-1] + channels[5].I1C1_a(v[:, k - 1])*gates[9, :, k-1] - channels[5].C1I1_a(v[:, k - 1])*gates[8, :, k-1])
-            for i in range(gates.shape[1]):
-                channels[5].dist = dist[i]
-                gates[9, i, k] = gates[9, i, k-1] + dt*(channels[5].O1I1_a(v[i, k - 1])*gates[7, i, k-1] - channels[5].I1O1_a(v[i,k-1])*gates[9, i, k-1] + channels[5].C1I1_a(v[i, k - 1])*gates[8, i, k-1] - channels[5].I1C1_a(v[i, k - 1])*gates[9, i, k-1] + channels[5].I2I1_a(v[i,k-1])*gates[10, i, k-1] - channels[5].I1I2_a(v[i,k-1])*gates[9, i, k-1])
-                gates[10,i, k] = gates[10, i, k-1] + dt*(channels[5].I1I2_a(v[i, k - 1])*gates[9, i, k-1]  - channels[5].I2I1_a(v[i,k-1])*gates[10, i, k-1])
-            # gates[10,:,k] = 1-np.sum(gates[7,:,k]-gates[8,:,k]-gates[9,:,k], axis = 0)
+            gates[7:11, :, k] = channels[5].update(v[:, k - 1], gates[7:11, :, k-1], dt)
+            # gates[7, :, k] = gates[7, :, k-1] + dt*(channels[5].C1O1_a(v[:, k - 1])*gates[8, :, k-1] - channels[5].O1C1_a(v[:,k-1])*gates[7, :, k-1] + channels[5].I1O1_a(v[:, k - 1])*gates[9, :, k-1] - channels[5].O1I1_a(v[:, k - 1])*gates[7,:,k-1])
+            # gates[8, :, k] = gates[8, :, k-1] + dt*(channels[5].O1C1_a(v[:, k - 1])*gates[7, :, k-1]  - channels[5].C1O1_a(v[:,k-1])*gates[8, :, k-1] + channels[5].I1C1_a(v[:, k - 1])*gates[9, :, k-1] - channels[5].C1I1_a(v[:, k - 1])*gates[8, :, k-1])
+            # gates[9, :, k] = gates[9, :, k-1] + dt*(channels[5].O1I1_a(v[:, k - 1])*gates[7, :, k-1] - channels[5].I1O1_a(v[:,k-1])*gates[9, :, k-1] + channels[5].C1I1_a(v[:, k - 1])*gates[8, :, k-1] - channels[5].I1C1_a(v[:, k - 1])*gates[9, :, k-1] + channels[5].I2I1_a(v[:,k-1])*gates[10, :, k-1] - channels[5].I1I2_a(v[:,k-1])*gates[9, :, k-1])
+            # # gates[10,:, k] = gates[10, :, k-1] + dt*(channels[5].I1I2_a(v[:, k - 1])*gates[9, :, k-1]  - channels[5].I2I1_a(v[:,k-1])*gates[10, :, k-1])
+            # gates[10,:,k] = 1-np.sum(gates[7:10,:,k], axis = 0)
             for kk in range(M):
                 ica[kk, k] = gca[kk]*channels[3].g_s(gates[4, kk, k-1], gates[5, kk, k-1])*(v[kk, k-1] - channels[3].E)
             gates[11,:,k] = channels[6].update(ica[:,k], gates[11, :, k-1], gamma, decay, dt)
@@ -379,7 +382,10 @@ class CModel:
                             E_e, tau_m, cm, dt, d_inds)
             f = rhs(v[:, k-1], g_a[:, k], g_n[:, k], g_g[:, k], self.Q, E_r,
                     E_e, E_i, tau_m, cm)
-            f[inj_site] += I_inj
+            if len(np.asarray(I_inj).shape)>1:
+                f[inj_site] += I_inj[:,k]
+            else:
+                f[inj_site] += I_inj
             f *= dt/cm
             a = Id - J	 # note to future self: J multiplied by dt in update step
             gates_current = gates[:,:,k].reshape((gates.shape[0], M))
@@ -489,7 +495,7 @@ class CModel:
         gates = soln[1]
         v_0 = v[:,0]
 
-        channels = [na(v_0[0]), kv(v_0[0]), im(v_0[0]) ,ca(v_0[0]), kca(v_0[0]), nad(v_0[0]),CaDynamics_E2()]
+        channels = [na(v_0[0]), kv(v_0[0]), im(v_0[0]) ,ca(v_0[0]), kca(v_0[0]), nad(v_0, dist),CaDynamics_E2()]
 
         GA = stim[3] - stim[2]
         GN = stim[5] - stim[4]
@@ -660,8 +666,8 @@ class CModel:
 
         P = self.P
         E_l, E_e, E_i, E_na, E_k, E_ca, tauA, tauN, tauG,\
-        active_n, r_na, gamma, decay,tau_m = (P['E_l'], P['E_e'], P['E_i'], P['E_na'], P['E_k'], P['E_ca'], \
-                    P['tauA'], P['tauN'], P['tauG'],  P['active_n'], P['r_na'], P['gamma'], P['decay'], P['tau_m'])
+        active_n, r_na, gamma, decay,tau_m, dist = (P['E_l'], P['E_e'], P['E_i'], P['E_na'], P['E_k'], P['E_ca'], \
+                    P['tauA'], P['tauN'], P['tauG'],  P['active_n'], P['r_na'], P['gamma'], P['decay'], P['tau_m'], P['dist'])
         # [cm, gpas, gna, gkv, gcah, gcal, gih, gim, gnap, gkt, gkp, gsk,gamma, decay, dend, axon, apic, soma]  = self.insert_biophysical_L5()
 
         g_ion = np.asarray([[self.P['g_na'], self.P['g_k'], self.P['g_m'] ,self.P['g_ca'], self.P['g_kca'],self.P['g_nad']],
@@ -691,7 +697,7 @@ class CModel:
         gates = soln[1]
         v_0 = v[:,0]
 
-        channels = [na(v_0[0]), kv(v_0[0]), im(v_0[0]) ,ca(v_0[0]), kca(v_0[0]), nad(v_0[0]),CaDynamics_E2()]
+        channels = [na(v_0[0]), kv(v_0[0]), im(v_0[0]) ,ca(v_0[0]), kca(v_0[0]), nad(v_0, dist),CaDynamics_E2()]
 
 
         dhQ = dt*(self.Q.T*1/cm).T
@@ -756,7 +762,7 @@ class CModel:
             gates_a[4, :] = channels[3].m_a(v[:,k], gates[4,:, k], gates[5, :, k])
             gates_a[5, :] = channels[3].h_a(v[:,k], gates[4, :, k], gates[5, :, k])
             gates_a[6, :] = np.zeros(gates_a[5,:].shape)
-            gates_a[7:11, :] = channels[5].gates_a(v[:,k], gates[7:11,:, k])
+            gates_a[7:10, :] = channels[5].gates_a(v[:,k], gates[7:10,:, k])
 
 
             gates_b[0, :] = channels[0].m_b(v[:, k], gates[0, :, k], gates[1, :, k])
@@ -766,7 +772,7 @@ class CModel:
             gates_b[4, :] = channels[3].m_b(v[:,k], gates[4,:, k], gates[5, :, k])
             gates_b[5, :] = channels[3].h_b(v[:,k], gates[4, :, k], gates[5, :, k])
             gates_b[6, :] = np.zeros(gates_b[5,:].shape)
-            gates_b[7:11, :] = channels[5].gates_b(v[:,k], gates[7:11,:, k])
+            gates_b[7:10, :] = channels[5].gates_b(v[:,k], gates[7:10,:, k])
 
 
             gates_b[gates_b==0] = np.inf
@@ -779,7 +785,7 @@ class CModel:
             gates_c[4, :] = channels[3].m_c(v[:,k], gates[4,:, k], gates[5, :, k])
             gates_c[5, :] = channels[3].h_c(v[:,k], gates[4, :, k], gates[5, :, k])
             gates_c[6, :] = np.zeros(gates_c[5,:].shape)
-            gates_c[7:11, :] = channels[5].gates_c(v[:,k], gates[7:11, :, k])
+            gates_c[7:10, :] = channels[5].gates_c(v[:,k], gates[7:10, :, k])
 
             gates_d[0, :] = channels[0].m_d(v[:, k], gates[0, :, k], gates[1, :, k])
             gates_d[1, :] = channels[0].h_d(v[:, k], gates[0, :, k], gates[1, :, k])
@@ -788,7 +794,7 @@ class CModel:
             gates_d[4, :] = channels[3].m_d(v[:,k], gates[4,:, k], gates[5, :, k])
             gates_d[5, :] = channels[3].h_d(v[:,k], gates[4, :, k], gates[5, :, k])
             gates_d[6, :] = np.zeros(gates_d[5,:].shape)
-            gates_d[7:11, :] = channels[5].gates_d(v[:,k], gates[7:11,:, k])
+            gates_d[7:10, :] = channels[5].gates_d(v[:,k], gates[7:10,:, k])
 
 
             for kk in range(gates.shape[0]):
@@ -1169,7 +1175,7 @@ def solve_grad(Q, B, g_ops, f_ops):
     forward_sub_mat(Q, X, f_ops)
 
 
-@nb.jit(nopython=True, cache=True)
+# @nb.jit(nopython=True, cache=True)
 def gauss_elim(Q, b, g_ops):
     """Gaussian elimination (upper triangle cleared)
 
@@ -1194,7 +1200,7 @@ def gauss_elim(Q, b, g_ops):
             Q[t, p] = 0
 
 
-@nb.jit(nopython=True, cache=True)
+# @nb.jit(nopython=True, cache=True)
 def gauss_elim_mat(Q, B, g_ops):
     """Gaussian elimination (upper triangle cleared) for matrix system
 
@@ -1219,7 +1225,7 @@ def gauss_elim_mat(Q, B, g_ops):
             Q[t, p] = 0
 
 
-@nb.jit(nopython=True, cache=True)
+# @nb.jit(nopython=True, cache=True)
 def row_reduce(Q, g_ops):
     """Row reduction of Q to precompute forward subtitution operations.
 
@@ -1236,7 +1242,7 @@ def row_reduce(Q, g_ops):
         Q[t, :] = Q[t, :] - Q[t, p]/Q[p, p]*Q[p, :]
 
 
-@nb.jit(nopython=True, cache=True)
+# @nb.jit(nopython=True, cache=True)
 def forward_sub(Q, x, f_ops):
     """Forward substitution after gauss_elim.
 
@@ -1256,7 +1262,7 @@ def forward_sub(Q, x, f_ops):
         x[r] -= Q[r, c]/Q[r, r]*x[c]
 
 
-@nb.jit(nopython=True, cache=True)
+# @nb.jit(nopython=True, cache=True)
 def forward_sub_mat(Q, X, f_ops):
     """Forward substitution for matrix system after gauss_elim_mat
 

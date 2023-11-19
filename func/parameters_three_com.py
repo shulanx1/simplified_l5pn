@@ -6,8 +6,8 @@ import os
 
 
 def init_params(wd):
-    N_e = 400
-    N_i = 200
+    N_e = 100
+    N_i = 50
     soma = [0]
     basal = [1]
     oblique = [2]
@@ -17,16 +17,17 @@ def init_params(wd):
     locs_i = np.array(
         basal + soma + oblique + apical)  # location of inhibitory synapses
 
-    dist = np.array([0.001,0.001,100.0,400.0]) # location of each compartment (distance to soma)
+    dist = np.array([0.001,0.001,10.0,40.0]) # location of each compartment (distance to soma)
+    N = np.asarray([np.inf,np.inf,2e5, 2e5])
 
     E_e = 0.  # excitatory reversal potential (mv)
     E_i = -75.  # inhibitory reversal potential (mv)
     tauA = np.array([0.1, 2.])  # AMPA synapse rise and decay time (ms)
-    g_max_A = 0.1 * 1e-3  # AMPA conductance (uS)
+    g_max_A = 0.2 * 1e-3  # AMPA conductance (uS)
     tauN = np.array([2., 75.])  # NMDA synapse rise and decay time (ms)
-    g_max_N = 0.2 * 1e-3  # NMDA conductance (uS)
+    g_max_N = 0.4 * 1e-3  # NMDA conductance (uS)
     tauG = np.array([1., 5.])  # GABA synapse rise and decay time (ms)
-    g_max_G = 0.4 * 1e-3  # GABA conductance (uS)
+    g_max_G = 0.8 * 1e-3  # GABA conductance (uS)
     active_n = False #True
     tau_m = 25
     r_na = 0.  # NMDA/AMPA ratio
@@ -77,7 +78,7 @@ def init_params(wd):
     g_l_p = 0.03 # proximal dendritic leak conductance (mS/cm2)
     c_m_p = 0.75 # proximal dendritic specific capacitance (uF/cm-2)
     g_na_p = 0 # proximal dendritic Na conductance (mS/cm2)
-    g_nad_p = 30
+    g_nad_p = 20
     g_k_p = 0.1*4 # proximal dendritic K conductance (mS/cm2)
     g_m_p = 0.0 # proximal dendritic Im conductance (mS/cm2)
     g_ca_p = 0. # proximal dendritic Ca conductance (mS/cm2)
@@ -105,6 +106,7 @@ def init_params(wd):
         'decay' : decay, 
         'tau_m': tau_m,
         'dist': dist,
+        'N': N,
 
         'E_e': E_e,
         'E_i': E_i,

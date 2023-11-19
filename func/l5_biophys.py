@@ -8,6 +8,9 @@ Created on Fri May 12 12:59:10 2023
 
 import numpy as np
 import cmath
+from scipy.optimize import minimize, LinearConstraint
+from scipy.stats import norm
+from numpy.random import RandomState
 
 class na:
     def __init__(self, v, E = 50.0):
@@ -160,11 +163,13 @@ class na:
         return (m**3)
 
 class nad:
-    def __init__(self, v, E = 50.0, dist = 300):
-        self.O1 = self.O1inf(v)  # O1
-        self.C1 = self.C1inf(v)  # C1
-        self.I1 = self.I1inf(v) # I2
-        self.I2 = 1- self.O1 - self.C1 - self.I1  # I2
+    def __init__(self, v, dist = 300, N = np.inf, E = 50.0):
+        # self.O1 = self.O1inf(v)  # O1
+        # self.C1 = self.C1inf(v)  # C1
+        # self.I1 = self.I1inf(v) # I2
+        # self.I2 = 1- self.O1 - self.C1 - self.I1  # I2
+        self.dist = dist
+        self.N = N
         self.qt = 2.3**((34-21)/10)
         self.E = E
         self.C1O1b2	  = 14
@@ -192,29 +197,94 @@ class nad:
         self.I1I2b2	  = 0.022
         self.I1I2v2	  = -25
         self.I1I2k2	  = -5
-        self.dist = dist
         self.slowdown = 0.2
         self.I2I1b1	  = 0.0018
         self.I2I1v1	  = -50
         self.I2I1k1	  = 12
+        [self.O1, self.C1, self.I1, self.I2] = self.calc_inf(v)
 
 
-    def O1inf(self,v):
-        return 0
 
-    def C1inf(self, v):
-        # return 0.25
-        return 0
+    # def O1inf(self,v):
+    #     return 0
 
-    def I1inf(self,v):
-        # return 0.25
-        return 0.5
+    # def C1inf(self, v):
+    #     # return 0.25
+    #     return 0.25
+
+    # def I1inf(self,v):
+    #     # return 0.25
+    #     return 0.5
+
+    def calc_inf(self, v):
+        if isinstance(self.dist, (int,float,np.float64, np.int8, np.int16, np.int32)):
+            dist = self.dist
+            M_temp = np.asarray([[-self.O1I1_a(v)-self.O1C1_a(v), self.C1O1_a(v), self.I1O1_a(v), 0],
+              [self.O1C1_a(v), -self.C1I1_a(v)-self.C1O1_a(v), self.I1C1_a(v), 0],
+              [self.O1I1_a(v), self.C1I1_a(v), -self.I1O1_a(v)-self.I1C1_a(v)-self.I1I2_a(v), self.I2I1_a(v)],
+              [0,0,self.I1I2_a(v), -self.I2I1_a(v)]])
+    
+            def f(x):
+                y = np.dot(M_temp, x)
+                return np.dot(y, y)
+    
+            cons = ({'type': 'eq', 'fun': lambda x: x.sum() - 1})
+            linear_constraint = LinearConstraint(np.eye(4), np.zeros(4), np.ones(4))
+            res = minimize(f, [0, 0.25, 0.5, 0.25], method='SLSQP', constraints=[cons,linear_constraint],
+                                    options={'disp': False})
+            infs = res['x']
+            if len(np.where(infs<0)[0])>0:
+                idx_zero = np.where(infs<0)[0]
+                for i in idx_zero:
+                    infs[i] = 0
+                infs[3] = 1-np.sum(infs[:3])
+            O1_inf = infs[0]
+            C1_inf = infs[1]
+            I1_inf = infs[2]
+            I2_inf = infs[3]
+        else:
+            O1_inf = np.zeros(self.dist.shape)
+            C1_inf = np.zeros(self.dist.shape)
+            I1_inf = np.zeros(self.dist.shape)
+            I2_inf = np.zeros(self.dist.shape)
+            dist_temp = self.dist
+            for (k, (dist,v1)) in enumerate(zip(dist_temp, v)):
+                self.dist = dist
+                M_temp = np.asarray([[-self.O1I1_a(v1)-self.O1C1_a(v1), self.C1O1_a(v1), self.I1O1_a(v1), 0],
+                  [self.O1C1_a(v1), -self.C1I1_a(v1)-self.C1O1_a(v1), self.I1C1_a(v1), 0],
+                  [self.O1I1_a(v1), self.C1I1_a(v1), -self.I1O1_a(v1)-self.I1C1_a(v1)-self.I1I2_a(v1), self.I2I1_a(v1)],
+                  [0,0,self.I1I2_a(v1), -self.I2I1_a(v1)]])
+    
+                def f(x):
+                    y = np.dot(M_temp, x)
+                    return np.dot(y, y)
+        
+                cons = ({'type': 'eq', 'fun': lambda x: x.sum() - 1})
+                linear_constraint = LinearConstraint(np.eye(4), np.zeros(4), np.ones(4))
+                res = minimize(f, [0, 0.25, 0.5, 0.25], method='SLSQP', constraints=[cons,linear_constraint],
+                                        options={'disp': False})
+                infs = res['x']
+                if len(np.where(infs<0)[0])>0:
+                    idx_zero = np.where(infs<0)[0]
+                    for i in idx_zero:
+                        infs[i] = 0
+                    infs[3] = 1-np.sum(infs[:3])
+                O1_inf[k] = infs[0]
+                C1_inf[k] = infs[1]
+                I1_inf[k] = infs[2]
+                I2_inf[k] = infs[3]
+
+            self.dist = dist_temp
+
+
+        return O1_inf, C1_inf, I1_inf, I2_inf
+
 
     def rates(self,v, b, vv, k):
         Arg=(v-vv)/k
 
         rates2 = (b/(1+np.exp(Arg)))
-        if isinstance(v, (np.float64, np.int8, np.int16, np.int32)):
+        if isinstance(rates2, (np.float64, np.int8, np.int16, np.int32)):
             if Arg<-50:
                 rates2=b
             elif Arg>50:
@@ -235,7 +305,7 @@ class nad:
         # else:
         #     d_rates2 = -b/k*(np.exp(Arg))/((1 + np.exp(Arg))**2)
         d_rates2 = -b/k*(np.exp(Arg))/((1 + np.exp(Arg))**2)
-        if isinstance(v, (np.float64, np.int8, np.int16, np.int32)):
+        if isinstance(d_rates2, (np.float64, np.int8, np.int16, np.int32)):
             if Arg<-50:
                 d_rates2=0
             elif Arg>50:
@@ -245,11 +315,59 @@ class nad:
             d_rates2[np.where(Arg>50)[0]] = 0
         return d_rates2
 
-    def update(self, v, dt):
-        self.O1 = self.O1 + dt*(self.C1O1_a(v)*self.C1 - self.O1C1_a(v)*self.O1 + self.I1O1_a(v)*self.I1 - self.O1I1_a(v)*self.O1)
-        self.C1 = self.C1 + dt*(self.O1C1_a(v)*self.O1 - self.C1O1_a(v)*self.C1 + self.I1C1_a(v)*self.I1 - self.C1I1_a(v)*self.C1)
-        self.I1 = self.I1 + dt*(self.O1I1_a(v)*self.O1 - self.I1O1_a(v)*self.I1 + self.C1I1_a(v)*self.C1 - self.I1C1_a(v)*self.I1 + self.I2I1_a(v)*self.I2 - self.I1I2_a(v)*self.I1)
-        self.I2 = 1 - self.O1 - self.C1 - self.I1
+    def update(self, v, gates, dt):
+        if isinstance(self.dist, (int,float,np.float64, np.int8, np.int16, np.int32)):
+            self.O1 = gates[0]
+            self.C1 = gates[1]
+            self.I1 = gates[2]
+            self.I2 = gates[3]
+            rand_norm = norm
+            rand_norm.random_state=RandomState(seed=None)
+            Z = rand_norm.rvs(0,1, size = 4)
+            R0 = Z[0]*np.sqrt(np.abs(self.C1O1_a(v)*self.C1+self.O1C1_a(v)*self.O1)/(self.N*dt))
+            R1 = Z[1]*np.sqrt(np.abs(self.C1I1_a(v)*self.C1+self.I1C1_a(v)*self.I1)/(self.N*dt))
+            R2 = Z[2]*np.sqrt(np.abs(self.O1I1_a(v)*self.O1+self.I1O1_a(v)*self.I1)/(self.N*dt))
+            R3 = Z[3]*np.sqrt(np.abs(self.I2I1_a(v)*self.I2+self.I1I2_a(v)*self.I1)/(self.N*dt))
+
+            O1 = self.O1 + dt*(self.C1O1_a(v)*self.C1 - self.O1C1_a(v)*self.O1 + self.I1O1_a(v)*self.I1 - self.O1I1_a(v)*self.O1 + R0 - R2)
+            C1 = self.C1 + dt*(self.O1C1_a(v)*self.O1 - self.C1O1_a(v)*self.C1 + self.I1C1_a(v)*self.I1 - self.C1I1_a(v)*self.C1 - R0 + R1)
+            I1 = self.I1 + dt*(self.O1I1_a(v)*self.O1 - self.I1O1_a(v)*self.I1 + self.C1I1_a(v)*self.C1 - self.I1C1_a(v)*self.I1 + self.I2I1_a(v)*self.I2 - self.I1I2_a(v)*self.I1 - R1 - R3 + R2)
+            I2 = 1 - self.O1 - self.C1 - self.I1
+            gates_u = np.asarray([O1,C1,I1,I2])
+            if len(np.where(gates_u<0)[0])>0:
+                idx_r = np.where(gates_u<0)[0]
+                gates_u[idx_r]=0
+                idx_r1 = np.setdiff1d(np.arange(4), idx_r)
+                gates_u[idx_r1[-1]] = 1-np.sum(gates_u[np.setdiff1d(np.arange(4), idx_r1[-1])])
+
+
+        else:
+            a = np.zeros(gates.shape)
+            self.O1 = gates[0]
+            self.C1 = gates[1]
+            self.I1 = gates[2]
+            self.I2 = gates[3]
+            rand_norm = norm
+            rand_norm.random_state=RandomState(seed=None)
+            Z = rand_norm.rvs(0,1, size = [4, gates.shape[1]])
+            R0 = Z[0]*np.sqrt(np.abs(self.C1O1_a(v)*self.C1+self.O1C1_a(v)*self.O1)/(self.N*dt))
+            R1 = Z[1]*np.sqrt(np.abs(self.C1I1_a(v)*self.C1+self.I1C1_a(v)*self.I1)/(self.N*dt))
+            R2 = Z[2]*np.sqrt(np.abs(self.O1I1_a(v)*self.O1+self.I1O1_a(v)*self.I1)/(self.N*dt))
+            R3 = Z[3]*np.sqrt(np.abs(self.I2I1_a(v)*self.I2+self.I1I2_a(v)*self.I1)/(self.N*dt))
+
+            O1 = self.O1 + dt*(self.C1O1_a(v)*self.C1 - self.O1C1_a(v)*self.O1 + self.I1O1_a(v)*self.I1 - self.O1I1_a(v)*self.O1 + R0 - R2)
+            C1 = self.C1 + dt*(self.O1C1_a(v)*self.O1 - self.C1O1_a(v)*self.C1 + self.I1C1_a(v)*self.I1 - self.C1I1_a(v)*self.C1 - R0 + R1)
+            I1 = self.I1 + dt*(self.O1I1_a(v)*self.O1 - self.I1O1_a(v)*self.I1 + self.C1I1_a(v)*self.C1 - self.I1C1_a(v)*self.I1 + self.I2I1_a(v)*self.I2 - self.I1I2_a(v)*self.I1 - R1 - R3 + R2)
+            I2 = np.ones(self.O1.shape) - self.O1 - self.C1 - self.I1
+            gates_u = np.asarray([O1,C1,I1,I2])
+            for i in range(gates_u.shape[1]):
+                if len(np.where(gates_u[:,i]<0)[0])>0:
+                    idx_r = np.where(gates_u[:,i]<0)[0]
+                    gates_u[idx_r, i]=0
+                    idx_r1 = np.setdiff1d(np.arange(4), idx_r)
+                    gates_u[idx_r1[-1],i] = 1-np.sum(gates_u[np.setdiff1d(np.arange(4), idx_r1[-1]),i])
+        return gates_u
+
 
 
     def C1O1_a(self, v):
@@ -315,37 +433,32 @@ class nad:
         scaling term for partial gradiant computation s_dm = a - b*s_m
 
         """
-
-        a = np.zeros([gates.T.shape[0], gates.T.shape[1]])
-        self.M1 = self.M(v, gates, dist)
+        a = np.zeros([gates.shape[0], gates.shape[1]])
+        self.M1 = self.M(v, gates)
         [self.R, self.l] = self.eigen_M(v, gates, self.M1)
-        for k, (gate, v1) in enumerate(zip(gates.T, v)):
+        dist_temp = self.dist
+        for k, (gate, v1, dist) in enumerate(zip(gates.T, v, dist_temp)):
+            self.dist = dist
             O1 = gate[0]
             C1 = gate[1]
             I1 = gate[2]
-            I2 = gate[3]
             a[:,k] = np.linalg.inv(self.R[k])@np.asarray([self.d_C1O1_a(v1)*C1 + self.d_I1O1_a(v1)*I1 - (self.d_O1I1_a(v1)+self.d_O1C1_a(v1))*O1,
                             self.d_O1C1_a(v1)*O1 + self.d_I1C1_a(v1)*I1 - (self.d_C1I1_a(v1)+self.d_C1O1_a(v1))*C1,
-                            self.d_O1I1_a(v1)*O1 + self.d_C1I1_a(v1)*C1 + self.d_I2I1_a(v1)*I2 - (self.d_I1O1_a(v1)+self.d_I1C1_a(v1)+self.d_I1I2_a(v1))*I1,
-                            self.d_I1I2_a(v1)*I1 - self.d_I2I1_a(v1)*I2])
+                            (self.d_O1I1_a(v1)-self.d_I2I1_a(v1))*O1 + (self.d_C1I1_a(v1)-self.d_I2I1_a(v1))*C1 + self.d_I2I1_a(v1) - (self.d_I2I1_a(v1) + self.d_I1O1_a(v1)+self.d_I1C1_a(v1)+self.d_I1I2_a(v1))*I1])
+        self.dist = dist_temp
         return a
 
 
     def M(self, v, gates):
         M = []
-        self.dist = dist
-        for k, (v1, gate) in enumerate(zip(v, gates.T)):
-            M_temp = np.asarray([[-self.O1I1_a(v1)-self.O1C1_a(v1), self.C1O1_a(v1), self.I1O1_a(v1), 0],
-                      [self.O1C1_a(v1), -self.C1I1_a(v1)-self.C1O1_a(v1), self.I1C1_a(v1), 0],
-                      [self.O1I1_a(v1), self.C1I1_a(v1), -self.I1O1_a(v1)-self.I1C1_a(v1)-self.I1I2_a(v1), self.I2I1_a(v1)],
-                      [0,0,self.I1I2_a(v1), -self.I2I1_a(v1)]])
-            # [U,S,V] = np.linalg.svd(M_temp)
-            # temp = np.zeros([gates.T.shape[0], gates.T.shape[0]])
-            # for i in range(gates.T.shape[0]-1):
-            #     temp = temp +S[i]*np.outer(U[i], V[:,i])
-            # S[-1] = 0
+        dist_temp = self.dist
+        for k, (v1, gate, dist) in enumerate(zip(v, gates.T, dist_temp)):
+            self.dist = dist
+            M_temp = np.asarray([[-self.O1I1_a(v1)-self.O1C1_a(v1), self.C1O1_a(v1), self.I1O1_a(v1)],
+                      [self.O1C1_a(v1), -self.C1I1_a(v1)-self.C1O1_a(v1), self.I1C1_a(v1)],
+                      [self.O1I1_a(v1)-self.I2I1_a(v1), self.C1I1_a(v1)-self.I2I1_a(v1), -self.I1O1_a(v1)-self.I1C1_a(v1)-self.I1I2_a(v1)-self.I2I1_a(v1)]])
             M.append(M_temp)
-
+        self.dist = dist_temp
         return M
 
     def eigen_M(self, v, gates, M1):
@@ -380,11 +493,11 @@ class nad:
         scaling term for partial gradiant computation s_dv = c*s_m + d*s_v
 
         """
-        # self.M1 = self.M(v, gates)
-        # [self.R, self.l] = self.eigen_M(v, gates, self.M1)
-        c = np.zeros([gates.T.shape[0], gates.T.shape[1]])
+        self.M1 = self.M(v, gates)
+        [self.R, self.l] = self.eigen_M(v, gates, self.M1)
+        c = np.zeros([gates.shape[0], gates.shape[1]])
         for k, (v1, gate) in enumerate(zip(v, gates.T)):
-            c[:,k] = self.R[k]@np.asarray([(self.E - v1), 0, 0, 0])
+            c[:,k] = self.R[k]@np.asarray([(self.E - v1), 0, 0])
         return c
 
     def gates_d(self, v, gates):
@@ -392,9 +505,9 @@ class nad:
         scaling term for partial gradiant computation s_dv = c*s_m + d*s_v
 
         """
-        d = np.zeros([gates.T.shape[0], gates.T.shape[1]])
+        d = np.zeros([gates.shape[0], gates.shape[1]])
         for k, (v1, gate) in enumerate(zip(v, gates.T)):
-            d[:,k] = np.asarray([gate[0], 0, 0, 0])# @self.VU[k]
+            d[:,k] = np.asarray([gate[0], 0, 0])# @self.VU[k]
         return d
 
 

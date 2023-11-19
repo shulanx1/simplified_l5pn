@@ -30,7 +30,7 @@ import matplotlib.pyplot as plt
 step_num = 10
 P = parameters_three_com.init_params(wd)
 params = ['kappa_d','dist_p']
-param_bounds = [[2,10],[1, 100]]
+param_bounds = [[2,10],[5, 40]]
 T = 300
 dt = 0.05
 [d_amp, p_amp, spike_num, burstiness, spike_time_list, value_lists] = param_fit.burst_test(P, params, param_bounds, step_num, T, dt)
@@ -39,25 +39,16 @@ value_lists = value_lists.T
 
 visualization.plot_burstiness_contour(params,value_lists, spike_time_list, T = T)
 
-# edges = np.arange(0,3,0.1)
-# spike_num = np.zeros(burstiness.shape)
-# for k, spike_time in enumerate(spike_time_list):
-#     spike_time = spike_time[np.where(spike_time>25)[0]]
-#     isi = np.diff(spike_time)
-#     idx_break = np.where(isi>(T/len(spike_time))*0.5)[0]
-#     idx_break = np.concatenate((np.array([0]).astype('int64'), idx_break))
-#     spike_num[k] = np.mean(np.diff(idx_break))
-#     isi_hist = np.histogram(isi/(T/len(spike_time)), edges)
-#     burstiness[k] = np.sum(isi_hist[0][:5])/len(isi)
-
-# plt.figure()
-# plt.contourf(value_lists[0].reshape(step_num,step_num), value_lists[1].reshape(step_num ,step_num), burstiness.reshape(step_num ,step_num), cmap = 'coolwarm',vmin = 0, vmax = 1)
-# plt.xlabel(params[0])
-# plt.ylabel(params[1])
-# plt.colorbar()
-
-# plt.figure()
-# plt.contourf(value_lists[0].reshape(step_num,step_num), value_lists[1].reshape(step_num ,step_num), spike_num.reshape(step_num ,step_num), cmap = 'coolwarm',vmin = 1)
-# plt.xlabel(params[0])
-# plt.ylabel(params[1])
-# plt.colorbar()
+#%%
+P = parameters_three_com.init_params(wd)
+T = 1000
+dt = 0.05
+P['dist'] = np.asarray([0.001,0.001,20.0,40.0])
+P['g_na_p'] = 0
+P['g_nad_p'] = 20-P['g_na_p']
+P['g_na_d'] = 0
+P['g_nad_d'] = 20
+P['N'] = np.asarray([np.inf, np.inf, 2e4, 2e4])
+# param_fit.loop_noise_tau(P, T, dt, taus = np.asarray([1,3,5,10,20,50,80,100,200,500]), amp = 0.05, N = 5, secs = [0, 2])
+for tau in [80]:
+    param_fit.loop_noise_amp(P, T, dt, tau = tau)
