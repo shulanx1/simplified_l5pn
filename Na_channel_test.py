@@ -109,3 +109,40 @@ plt.xlim([100,1200])
 
 
 # %%
+# ## plot Nav1.6 dynamic
+# from func.l5_biophys import *
+
+# c = nad(-75)
+# c.dist = 300
+# v1 = np.arange(-100,50, 0.1)
+# plt.figure()
+# ax = plt.gca()
+# ax.plot(v1, c.I1I2_a(v1), color = colors[1], linewidth = 1)
+# ax2 = ax.twinx()
+# ax2.plot(v1, c.I2I1_a(v1), color = colors[0], linewidth = 1)
+# ax.set_ylabel("I1-I2",color=colors[1])
+# ax2.set_ylabel("I2-I1",color=colors[0])
+
+# plt.figure()
+# ax = plt.gca()
+# ax.plot(v1, c.I1C1_a(v1), color = colors[1], linewidth = 1)
+# ax2 = ax.twinx()
+# ax2.plot(v1, c.C1I1_a(v1), color = colors[2], linewidth = 1)
+# ax.set_ylabel("I1-C1",color=colors[1])
+# ax2.set_ylabel("C1-I1",color=colors[2])
+
+# plt.figure()
+# ax = plt.gca()
+# ax.plot(v1, c.I1O1_a(v1), color = colors[1], linewidth = 1)
+# ax2 = ax.twinx()
+# ax2.plot(v1, c.O1I1_a(v1), color = colors[3], linewidth = 1)
+# ax.set_ylabel("I1-O1",color=colors[1])
+# ax2.set_ylabel("O1-I1",color=colors[3])
+
+# plt.figure()
+# ax = plt.gca()
+# ax.plot(v1, c.C1O1_a(v1), color = colors[2], linewidth = 1)
+# ax2 = ax.twinx()
+# ax2.plot(v1, c.O1C1_a(v1), color = colors[3], linewidth = 1)
+# ax.set_ylabel("C1-O1",color=colors[2])
+# ax2.set_ylabel("O1-C1",color=colors[3])
