@@ -5,7 +5,7 @@ Created on Wed Oct 11 15:50:20 2023
 @author: xiao208
 """
 
-
+#%%
 import sys
 import os
 wd = 'E:\\Code\\simplified_l5pn' # working directory
@@ -23,10 +23,12 @@ from func import sequences
 from func import post_analysis
 P = parameters_three_com.init_params(wd)
 import matplotlib.pyplot as plt
+plt.rcParams['svg.fonttype'] = 'none'
 from func.l5_biophys import *
+from func.param_fit import *
 from scipy.stats import norm
 from numpy.random import RandomState
-
+#%%
 def change_i_spike_rate(rates, cell, comp = 'soma', amp = None, amp_ratio = 2):
     idx = np.where(cell.sec_i[0]==cell.P[comp])
     if amp != None:
@@ -59,8 +61,7 @@ rates_e = [np.zeros(P['N_e'])]
 rates_i =[ np.zeros(P['N_i'])]
 S_e = sequences.build_rate_seq(rates_e[0], 0, T)
 S_i = sequences.build_rate_seq(rates_i[0], 0, T)
-
-#%
+#%%
 
 cell.P['dist'] = np.asarray([0.001,0.001,20.0,40.0])
 cell.P['g_na_p'] = 0
@@ -69,7 +70,7 @@ cell.P['g_na_d'] = 0
 cell.P['g_nad_d'] = 20
 cell.P['N'] = np.asarray([np.inf, np.inf, 2e4, 2e4])
 
-#%%
+
 # t, soln, stim = cell.simulate(0, T, dt, v_init, S_e, S_i, I_inj=[0.0], inj_site = [0])
 tau = 50
 t = np.arange(0, T+dt, dt)
@@ -78,33 +79,39 @@ rand_norm.random_state=RandomState(seed=None)
 conv_f = t*np.exp(-t/(tau))
 conv_f = conv_f/np.sum(conv_f) #normalize
 wn_conv = np.convolve(rand_norm.rvs(0,2, size = t.shape), conv_f)
-#%%
-I_inj2 = wn_conv[:t.shape[0]]/np.max(np.abs(wn_conv[:t.shape[0]]))*0.05
+# I_inj2 = wn_conv[:t.shape[0]]/np.max(np.abs(wn_conv[:t.shape[0]]))*0.05
+I_inj2 = wn_conv[:t.shape[0]]/np.max(np.abs(wn_conv[:t.shape[0]]))*0
 t, soln, stim = cell.simulate(0, T, dt, v_init, S_e, S_i, I_inj=np.asarray([-0.00*np.ones(t.shape),I_inj2]), inj_site = [2,0])
 
 colors = np.asarray([[128,128,128],[61,139,191], [119,177,204], [6,50,99]])
 colors = colors/256
 plt.figure()
 ax = plt.subplot(211)
+v = soln[0]
+t_spike = spike_times(dt, v)
+t_dspike = d_spike_times(dt,v, t_spike)
 for i in [0,2,3]:
     ax.plot(t, soln[0][i], color = colors[i], linewidth=0.75)
-ax.set_xlim([50,T])
-
+# ax.scatter(t_spike, v[0, np.floor(t_spike/dt).astype(np.int32)])
+# ax.scatter(t_dspike.T[0], v[2, np.floor(t_dspike.T[0]/dt).astype(np.int32)])
+# ax.scatter(t_dspike.T[1], v[3, np.floor(t_dspike.T[1]/dt).astype(np.int32)])
+ax.set_xlim([0,T])
+comp = 2
+ax = plt.subplot(212)
+for i in [3]:
+    ax.plot(t, soln[1][7+i,comp,:].T, color = colors[i,:])
+ax.set_xlim([0,T])
+ax.set_ylim([0.7,1])
 # plt.figure()
 # plt.plot(t, soln[1][10,3,:],color = colors[3])
 # plt.plot(t, soln[1][10,2,:],color = colors[2])
 # plt.xlim([0,T])
 
-comp = 2
-ax = plt.subplot(212)
-for i in [3]:
-    ax.plot(t, soln[1][7+i,comp,:].T, color = colors[i,:])
-ax.set_xlim([50,T])
-ax.set_ylim([0.7,1])
 
+#%%
 plt.figure()
 plt.plot(t, I_inj2)
-ax.set_xlim([50,T])
+plt.xlim([50,T])
 # c = nad(v_init, dist = P['dist'][comp])
 # plt.figure()
 # plt.plot(c.I1C1_a(soln[0][comp,:])*soln[1][9,comp,:])
@@ -187,3 +194,4 @@ ax.set_xlim([50,T])
 # ax2.plot(v1, c.O1C1_a(v1), color = colors[3], linewidth = 1)
 # ax.set_ylabel("C1-O1",color=colors[2])
 # ax2.set_ylabel("O1-C1",color=colors[3])
+# %%

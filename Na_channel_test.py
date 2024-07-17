@@ -4,7 +4,7 @@ Created on Tue Nov 14 17:21:35 2023
 
 @author: xiao208
 """
-
+#%%
 import sys
 import os
 wd = 'E:\\Code\\simplified_l5pn' # working directory
@@ -48,6 +48,7 @@ for (k, d) in enumerate(dist):
     a = c.I1I2_a(v1)
     b = c.I2I1_a(v1)
     plt.plot(v1, b/(a+b), color = colors_d[k])
+plt.show()
 
 plt.figure()
 for (k, d) in enumerate(dist):
@@ -55,6 +56,7 @@ for (k, d) in enumerate(dist):
     a = c.I1I2_a(v1)
     b = c.I2I1_a(v1)
     plt.plot(v1, 1/(a+b), color = colors_d[k])
+plt.show()
 
 #%% v-clammp
 dt = 0.05
@@ -68,6 +70,7 @@ v_command_temp = np.concatenate([v_init*np.ones([np.floor(200/dt).astype(int)]),
 rand_norm = norm
 rand_norm.random_state=RandomState(seed=None)
 v_command_temp1 = v_command_temp + rand_norm.rvs(0,5, size = v_command_temp.shape)
+t = dt*np.arange(v_command_temp.shape[0])
 conv_f = t*np.exp(-t/(tau))
 conv_f = conv_f/np.sum(conv_f) #normalize
 wn_conv = np.convolve(rand_norm.rvs(0,5, size = v_command_temp.shape), conv_f)
@@ -104,3 +107,5 @@ plt.xlim([100,1200])
 
 
 
+
+# %%

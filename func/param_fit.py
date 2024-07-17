@@ -48,10 +48,41 @@ def spike_times(dt, v):
         spikes = np.where(np.diff(thresh_cross) > 1)[0] + 1
         spikes = np.insert(spikes, 0, 0)
         spikes = thresh_cross[spikes]
-        t_spike = spikes*dt - 2
+        spikes_temp = spikes
+        for k, spike in enumerate(spikes):  # detect the max amp point as spike time
+            spike_w_temp = v[0, spike:spike + np.floor(2/dt).astype(np.int32)]
+            spikes_temp[k] = spike + np.argmax(spike_w_temp)
+        t_spike = spikes_temp*dt
     else:
         t_spike = np.array([])
     return t_spike
+
+def d_spike_times(dt, v, t_spike = np.array([])):
+    """ Get spike times from voltage trace.
+
+    Parameters
+    ----------
+    dt : float
+        simulation timestep
+    v : ndarray
+        compartment voltages v=v[compartment, time]
+    Returns
+    -------
+    t_spike : ndarray
+        spike times
+    """
+    if t_spike.shape[0] ==0:
+        t_spike = spike_times(dt, v)
+    if t_spike.shape[0]>0:
+        spikes = np.floor(t_spike/dt).astype(np.int32)
+        spikes_temp = np.zeros((spikes.shape[0],2))
+        for k, spike in enumerate(spikes):
+            spike_w_temp = v[2:, spike:spike + np.floor(2/dt).astype(np.int32)]
+            spikes_temp[k] = spike + np.argmax(spike_w_temp, axis = 1)
+        t_dspike = spikes_temp*dt
+    else:
+        t_dspike = np.array([])
+    return t_dspike
 
 def burst_test(P, params, param_bounds, step_num = 10, T = 200, dt = 0.05):
     cell = comp_model.CModel(P, verbool = False)
