@@ -39,16 +39,3 @@ value_lists = value_lists.T
 
 visualization.plot_burstiness_contour(params,value_lists, spike_time_list, T = T)
 
-#%%
-P = parameters_three_com.init_params(wd)
-T = 1000
-dt = 0.05
-P['dist'] = np.asarray([0.001,0.001,20.0,40.0])
-P['g_na_p'] = 0
-P['g_nad_p'] = 20-P['g_na_p']
-P['g_na_d'] = 0
-P['g_nad_d'] = 20
-P['N'] = np.asarray([np.inf, np.inf, 2e4, 2e4])
-# param_fit.loop_noise_tau(P, T, dt, taus = np.asarray([1,3,5,10,20,50,80,100,200,500]), amp = 0.05, N = 5, secs = [0, 2])
-for tau in [80]:
-    param_fit.loop_noise_amp(P, T, dt, tau = tau)

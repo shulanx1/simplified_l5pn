@@ -19,6 +19,7 @@ from func import comp_model
 from func import parameters_two_com
 from func import parameters_three_com
 from func import sequences
+from func import param_fit
 from func import post_analysis
 P = parameters_three_com.init_params(wd)
 import matplotlib.pyplot as plt
@@ -57,6 +58,11 @@ for (k, d) in enumerate(dist):
     b = c.I2I1_a(v1)
     plt.plot(v1, 1/(a+b), color = colors_d[k])
 plt.show()
+#%% v-clamp temperature and distance dependence
+freq = 11
+dist = np.asarray([10.0,20.0,30.0])
+temp = np.asarray([28.0, 34.0])
+param_fit.vclamp_nad_test(0.05, freq = freq, dist = dist, temp = temp)
 
 #%% v-clammp
 dt = 0.05

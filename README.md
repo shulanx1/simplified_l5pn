@@ -34,6 +34,6 @@
 [8] nad_C1<br />
 [9] nad_I1<br />
 [10] nad_I2<br />
-*ca dynamic
+* ca dynamic
 [11] cai<br />
  
