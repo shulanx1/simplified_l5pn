@@ -298,7 +298,7 @@ def vclamp_nad_test(dt, freq = 11, dist = np.asarray([10.0,20.0,30.0]), temp = n
         plt.show()
 
 
-def vclamp_nad_test_w_noise(P, dt, freq = 11, pulse_width = 5, v_init = -70.0, tau = 1):
+def vclamp_nad_test_w_noise(dt, freq = 11, dist = 10.0, N = np.asarray([2e3,2e4,2e5]), pulse_width = 5, v_init = -70.0, tau = 1, if_plot = 1):
 
     cycle = np.concatenate([40.0*np.ones([np.floor(pulse_width/dt).astype(int)]), v_init*np.ones([np.floor(1000/freq/dt).astype(int)-np.floor(pulse_width/dt).astype(int)])],axis = 0)
     v_command_temp = np.concatenate([v_init*np.ones([np.floor(200/dt).astype(int)]), np.tile(cycle, 10)], axis = 0)
@@ -311,10 +311,9 @@ def vclamp_nad_test_w_noise(P, dt, freq = 11, pulse_width = 5, v_init = -70.0, t
     wn_conv = np.convolve(rand_norm.rvs(0,5, size = v_command_temp.shape), conv_f)
     v_command_temp2 = v_command_temp + wn_conv[:v_command_temp.shape[0]]*5
 
-
-    dist = np.asarray([10.0,10.0,10.0])
-    N = np.asarray([2e3,2e4,2e5])
-    v_command  = np.tile(v_command_temp2, (len(dist), 1))
+    if isinstance(dist, (int,float,np.float64, np.int8, np.int16, np.int32)):
+        dist = dist*np.ones(N.shape)
+    v_command  = np.tile(v_command_temp2, (N.shape[0], 1))
     t = dt*np.arange(v_command.shape[1])
 
     gates = np.zeros([4, v_command.shape[0], v_command.shape[1]])
@@ -332,10 +331,11 @@ def vclamp_nad_test_w_noise(P, dt, freq = 11, pulse_width = 5, v_init = -70.0, t
         G_nad[i,:] = c.g_s(gates[:, i, :])
         I_nad[i,:] = G_nad[i,:]*(v_command[i,:]-c.E)
 
-    colors = np.asarray([[128,128,128],[61,139,191], [119,177,204], [6,50,99]])
-    colors = colors/256
-    plt.figure()
-    for i in range(len(dist)):
-        plt.plot(t, G_nad[i,:], color = colors[i+1])
-    plt.xlim([100,1200])
-    plt.show()
+    if if_plot:
+        colors = np.asarray([[128,128,128],[61,139,191], [119,177,204], [6,50,99]])
+        colors = colors/256
+        plt.figure()
+        for i in range(N.shape[0]):
+            plt.plot(t, G_nad[i,:], color = colors[i+1])
+        plt.xlim([100,1200])
+        plt.show()
