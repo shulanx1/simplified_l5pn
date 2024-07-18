@@ -255,8 +255,8 @@ class CModel:
          """
         P = self.P
         E_r, E_e, E_i, E_na, E_k, E_ca, tauA, tauN, tauG,\
-        active_n, r_na, gamma, decay,tau_m, dist, N = (P['E_l'], P['E_e'], P['E_i'], P['E_na'], P['E_k'], P['E_ca'], \
-                    P['tauA'], P['tauN'], P['tauG'],  P['active_n'], P['r_na'], P['gamma'], P['decay'], P['tau_m'], P['dist'], P['N'])
+        active_n, r_na, gamma, decay,tau_m, dist, temp, N = (P['E_l'], P['E_e'], P['E_i'], P['E_na'], P['E_k'], P['E_ca'], \
+                    P['tauA'], P['tauN'], P['tauG'],  P['active_n'], P['r_na'], P['gamma'], P['decay'], P['tau_m'], P['dist'], P['temp'],P['N'])
 
         g_ion = np.asarray([[self.P['g_na'], self.P['g_k'], self.P['g_m'] ,self.P['g_ca'], self.P['g_kca'],self.P['g_nad']],
                             [self.P['g_na_b'],self.P['g_k_b'], self.P['g_m_b'] ,self.P['g_ca_b'], self.P['g_kca_b'],self.P['g_nad_b']],
@@ -318,7 +318,7 @@ class CModel:
         n_dend = np.asarray([i for i in a_inds if i not in dend])
         v[:, 0] = v_0
         gates = np.zeros((12, M, len(t)))
-        channels = [na(v_0[0]), kv(v_0[0]), im(v_0[0]) ,ca(v_0[0]), kca(v_0[0]), nad(v_0, dist = dist, N = N),CaDynamics_E2()]
+        channels = [na(v[:, 0], temp = temp), kv(v[:, 0], temp = temp), im(v[:, 0], temp = temp) ,ca(v[:, 0], temp = temp), kca(v[:, 0], temp = temp), nad(v_0, dist = dist, N = N, temp = temp),CaDynamics_E2()]
         gates[0] = np.zeros((M, len(t)))  # na_m
         gates[1] = np.zeros((M, len(t)))  # na_h
         gates[0, :, 0] = channels[0].m

@@ -18,7 +18,8 @@ def init_params(wd):
         basal + soma + oblique + apical)  # location of inhibitory synapses
 
     dist = np.array([0.001,0.001,10.0,40.0]) # location of each compartment (distance to soma)
-    N = np.asarray([np.inf,np.inf,2e5, 2e5])
+    temp = np.asarray([34, 34, 34, 34]) # temperature of each compartment
+    N = np.asarray([np.inf,np.inf,2e5, 2e5]) # number of nad channels in each compartment
 
     E_e = 0.  # excitatory reversal potential (mv)
     E_i = -75.  # inhibitory reversal potential (mv)
@@ -62,7 +63,7 @@ def init_params(wd):
     rho_b = 1 # basal area/somatic area
     kappa_b = 10 # basal-somatic coupling resistance (MOhm)
 
-    # dendritic compartment
+    # distal compartment
     g_l_d = 0.03 # dendritic leak conductance (mS/cm2)
     c_m_d = 0.75 # dendritic specific capacitance (uF/cm-2)
     g_na_d = 0.0 # 0.8*4 # dendritic Na conductance (mS/cm2)
@@ -106,6 +107,7 @@ def init_params(wd):
         'decay' : decay, 
         'tau_m': tau_m,
         'dist': dist,
+        'temp': temp,
         'N': N,
 
         'E_e': E_e,

@@ -13,18 +13,39 @@ from scipy.stats import norm
 from numpy.random import RandomState
 
 class na:
-    def __init__(self, v, E = 50.0):
+    def __init__(self, v, E = 50.0, N = np.inf, temp = 34.0):
         self.m = self.minf(v)
         self.h = self.hinf(v)
-        self.qt = 2.3**((34-21)/10)
+        if np.asarray(N).shape == np.asarray(v).shape:
+            self.N = N
+        else:
+            if isinstance(N, (int,float,np.float64, np.int8, np.int16, np.int32)):
+                self.N = N*np.ones(v.shape)
+            else:
+                self.N = N[0]*np.ones(v.shape)
+
+        if np.asarray(temp).shape == np.asarray(v).shape:
+            self.qt = 2.3**((temp-21)/10)
+        else:
+            if isinstance(temp, (int,float,np.float64, np.int8, np.int16, np.int32)):
+                self.qt = 2.3**((temp-21)/10)*np.ones(v.shape)
+            else:
+                self.qt = 2.3**((temp[0]-21)/10)*np.ones(v.shape)
+
         self.E = E
 
     def update(self, v, dt):
-        # self.m = self.m + (self.minf(v)-self.m)/self.mtau(v)*dt
-        # self.h = self.h + (self.hinf(v)-self.h)/self.htau(v)*dt
-        self.m = self.m + (1-np.exp(-dt/self.mtau(v)))*(self.minf(v)-self.m)
-        self.h = self.h + (1-np.exp(-dt/self.htau(v)))*(self.hinf(v)-self.h)
+        # self.m = self.m + (1-np.exp(-dt/self.mtau(v)))*(self.minf(v)-self.m)
+        # self.h = self.h + (1-np.exp(-dt/self.htau(v)))*(self.hinf(v)-self.h)
+        rand_norm = norm
+        rand_norm.random_state=RandomState(seed=None)
+        Zm = rand_norm.rvs(0,1, size = self.m.shape)
+        Zh = rand_norm.rvs(0,1, size = self.h.shape)
+        R0 = Zm*np.sqrt(np.abs(self.malpha(v)*(1-self.m)+self.mbeta(v)*self.m)/(self.N*dt*3))
+        R1 = Zh*np.sqrt(np.abs(self.halpha(v)*(1-self.h)+self.hbeta(v)*self.h)/(self.N*dt*3))
 
+        self.m = self.m + (1-np.exp(-dt/self.mtau(v)))*(self.minf(v)-self.m) + R0*dt
+        self.h = self.h + (1-np.exp(-dt/self.htau(v)))*(self.hinf(v)-self.h) + R1*dt
 
     def malpha(self, v):
         return (0.182 * (v + 38.))/(1-(np.exp(-(v + 38.)/9.)))
@@ -163,14 +184,36 @@ class na:
         return (m**3)
 
 class nad:
-    def __init__(self, v, dist = 300, N = np.inf, E = 50.0):
+    def __init__(self, v, dist = 300, N = np.inf, E = 50.0, temp = 34):
         # self.O1 = self.O1inf(v)  # O1
         # self.C1 = self.C1inf(v)  # C1
         # self.I1 = self.I1inf(v) # I2
         # self.I2 = 1- self.O1 - self.C1 - self.I1  # I2
-        self.dist = dist
-        self.N = N
-        self.qt = 2.3**((34-21)/10)
+        if isinstance(v, list):
+            v = np.asarray(v)
+        if np.asarray(dist).shape == np.asarray(v).shape:
+            self.dist = dist
+        else:
+            if isinstance(dist, (int,float,np.float64, np.int8, np.int16, np.int32)):
+                self.dist = dist*np.ones(v.shape)
+            else:
+                self.dist = dist[0]*np.ones(v.shape)
+
+        if np.asarray(N).shape == np.asarray(v).shape:
+            self.N = N
+        else:
+            if isinstance(N, (int,float,np.float64, np.int8, np.int16, np.int32)):
+                self.N = N*np.ones(v.shape)
+            else:
+                self.N = N[0]*np.ones(v.shape)
+
+        if np.asarray(temp).shape == np.asarray(v).shape:
+            self.qt = 2.3**((temp-21)/10)
+        else:
+            if isinstance(temp, (int,float,np.float64, np.int8, np.int16, np.int32)):
+                self.qt = 2.3**((temp-21)/10)*np.ones(v.shape)
+            else:
+                self.qt = 2.3**((temp[0]-21)/10)*np.ones(v.shape)
         self.E = E
         self.C1O1b2	  = 14
         self.C1O1v2    = 0
@@ -248,8 +291,10 @@ class nad:
             I1_inf = np.zeros(self.dist.shape)
             I2_inf = np.zeros(self.dist.shape)
             dist_temp = self.dist
-            for (k, (dist,v1)) in enumerate(zip(dist_temp, v)):
+            qt_temp = self.qt
+            for (k, (dist,v1, qt)) in enumerate(zip(dist_temp, v, qt_temp)):
                 self.dist = dist
+                self.qt = qt
                 M_temp = np.asarray([[-self.O1I1_a(v1)-self.O1C1_a(v1), self.C1O1_a(v1), self.I1O1_a(v1), 0],
                   [self.O1C1_a(v1), -self.C1I1_a(v1)-self.C1O1_a(v1), self.I1C1_a(v1), 0],
                   [self.O1I1_a(v1), self.C1I1_a(v1), -self.I1O1_a(v1)-self.I1C1_a(v1)-self.I1I2_a(v1), self.I2I1_a(v1)],
@@ -275,6 +320,7 @@ class nad:
                 I2_inf[k] = infs[3]
 
             self.dist = dist_temp
+            self.qt = qt_temp
 
 
         return O1_inf, C1_inf, I1_inf, I2_inf
@@ -514,15 +560,34 @@ class nad:
 
 
 class kv:
-    def __init__(self, v, E = -90.0):
+    def __init__(self, v, E = -90.0, N = np.inf, temp = 34.0):
         self.m = self.minf(v)
-        self.qt = 2.3**((34-21)/10)
         self.E = E
+        if np.asarray(N).shape == np.asarray(v).shape:
+            self.N = N
+        else:
+            if isinstance(N, (int,float,np.float64, np.int8, np.int16, np.int32)):
+                self.N = N*np.ones(v.shape)
+            else:
+                self.N = N[0]*np.ones(v.shape)
+
+        if np.asarray(temp).shape == np.asarray(v).shape:
+            self.qt = 2.3**((temp-21)/10)
+        else:
+            if isinstance(temp, (int,float,np.float64, np.int8, np.int16, np.int32)):
+                self.qt = 2.3**((temp-21)/10)*np.ones(v.shape)
+            else:
+                self.qt = 2.3**((temp[0]-21)/10)*np.ones(v.shape)
 
     def update(self, v, dt):
         # self.m = self.m + (self.minf(v)-self.m)/self.mtau(v)*dt
         # self.h = self.h + (self.hinf(v)-self.h)/self.htau(v)*dt
-        self.m = self.m + (1-np.exp(-dt/self.mtau(v)))*(self.minf(v)-self.m)
+        rand_norm = norm
+        rand_norm.random_state=RandomState(seed=None)
+        Zm = rand_norm.rvs(0,1, size = self.m.shape)
+
+        R0 = Zm*np.sqrt(np.abs(self.malpha(v)*(1-self.m)+self.mbeta(v)*self.m)/(self.N*dt))    
+        self.m = self.m + (1-np.exp(-dt/self.mtau(v)))*(self.minf(v)-self.m) + R0*dt
 
     def malpha(self, v):
         return 0.02*(v - 25.)/(1. - np.exp(-(v - 25.)/9.))
@@ -599,10 +664,17 @@ class kv:
         return 1
 
 class im:
-    def __init__(self, v, E = -90.0):
+    def __init__(self, v, E = -90.0, temp = 34.0):
         self.m = self.minf(v)
-        self.qt = 2.3**((34-21)/10)
         self.E = E
+
+        if np.asarray(temp).shape == np.asarray(v).shape:
+            self.qt = 2.3**((temp-21)/10)
+        else:
+            if isinstance(temp, (int,float,np.float64, np.int8, np.int16, np.int32)):
+                self.qt = 2.3**((temp-21)/10)*np.ones(v.shape)
+            else:
+                self.qt = 2.3**((temp[0]-21)/10)*np.ones(v.shape)
 
     def update(self, v, dt):
         self.m = self.m + (1-np.exp(-dt/self.mtau(v)))*(self.minf(v)-self.m)
@@ -682,11 +754,17 @@ class im:
         return 1
 
 class ca:
-    def __init__(self, v, E = 120.0):
+    def __init__(self, v, E = 120.0, temp = 34.0):
         self.m = self.minf(v)
         self.h = self.hinf(v)
-        self.qt = 2.3**((34-21)/10)
         self.E = E
+        if np.asarray(temp).shape == np.asarray(v).shape:
+            self.qt = 2.3**((temp-21)/10)
+        else:
+            if isinstance(temp, (int,float,np.float64, np.int8, np.int16, np.int32)):
+                self.qt = 2.3**((temp-21)/10)*np.ones(v.shape)
+            else:
+                self.qt = 2.3**((temp[0]-21)/10)*np.ones(v.shape)
 
     def update(self, v, dt):
         # self.m = self.m + (self.minf(v)-self.m)/self.mtau(v)*dt
@@ -834,10 +912,16 @@ class ca:
 
 
 class kca:
-    def __init__(self, ca =  1e-4, E = -90.0):
+    def __init__(self, ca =  1e-4, E = -90.0, temp = 34.0):
         self.m = self.minf(ca)
-        self.qt = 2.3**((34-21)/10)
         self.E = E
+        if np.asarray(temp).shape == np.asarray(ca).shape:
+            self.qt = 2.3**((temp-21)/10)
+        else:
+            if isinstance(temp, (int,float,np.float64, np.int8, np.int16, np.int32)):
+                self.qt = 2.3**((temp-21)/10)*np.ones(ca.shape)
+            else:
+                self.qt = 2.3**((temp[0]-21)/10)*np.ones(ca.shape)
 
     def update(self, ca, dt):
         # self.m = self.m + (self.minf(v)-self.m)/self.mtau(v)*dt

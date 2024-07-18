@@ -103,6 +103,7 @@ plt.figure()
 for i in range(len(dist)):
     plt.plot(t, G_nad[i,:], color = colors[i+1])
 plt.xlim([100,1200])
+plt.show()
 
 
 
